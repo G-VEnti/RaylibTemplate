@@ -35,6 +35,8 @@ char** objectsMap;
 std::map<char, std::string> texturesNamesMap;
 std::map<char, Texture2D> textures2DMap;
 
+Vector2 playerPos;
+
 void DrawCubeTexture(Texture2D texture, Vector3 position, float width, float height, float length, Color color); // Draw cube textured
 void DrawCubeTextureRec(Texture2D texture, Rectangle source, Vector3 position, float width, float height, float length, Color color); // Draw cube with a region of a texture
 
@@ -80,7 +82,7 @@ int start_raylib(void)
         //----------------------------------------------------------------------------------
         if (IsKeyPressed(KEY_P)) pause = !pause;
 
-        if (!pause) UpdateCamera(&camera, CAMERA_ORBITAL);
+        if (!pause) UpdateCamera(&camera, CAMERA_FREE);
         //----------------------------------------------------------------------------------
 
         // Draw
@@ -103,7 +105,7 @@ int start_raylib(void)
 			offsetZ += 0.5;
 		}
 
-		// Draw cube with an applied texture
+		//Draw cube with an applied texture
 		for (int i = 0; i < lvlHeight; i++)
 		{
 			for (int j = 0; j < lvlWidth; j++)
@@ -126,18 +128,31 @@ int start_raylib(void)
 			}
 		}
 
+
+		if (IsKeyPressed(KEY_D)) playerPos.x++;
+		if (IsKeyPressed(KEY_W)) playerPos.y--;
+		if (IsKeyPressed(KEY_A)) playerPos.x--;
+		if (IsKeyPressed(KEY_S)) playerPos.y++;
+
 		for (int i = 0; i < lvlHeight; i++)
 		{
 			for (int j = 0; j < lvlWidth; j++)
 			{
 				if (objectsMap[i][j] != '0')
 				{
-					DrawSphere({ float(j) + offsetX, 1.0f, float(i) + offsetZ }, 0.25f, RED);
+					DrawSphere({ float(j) + offsetX + playerPos.x, 1.0f, float(i) + offsetZ + playerPos.y }, 0.25f, RED);
 				}
 			}
 		}
 
-		//DrawCubeTexture(textures2DMap['a'], { 0.0f, 0.0f, 0.0f }, 1.0f, 1.0f, 1.0f, WHITE);
+
+		//for (int i = 0; i < 1; i++)
+		//{
+		//	for (int j = 0; j < 5; j++)
+		//	{
+		//		DrawCubeTexture(textures2DMap['a'], { float(j), 0.0f, float(i) }, 1.0f, 1.0f, 1.0f, WHITE);
+		//	}
+		//}
 
 		DrawGrid(10, 1.0f);        // Draw a grid
 
