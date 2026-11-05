@@ -18,6 +18,8 @@ by Jeffery Myers is marked with CC0 1.0. To view a copy of this license, visit h
 #include <map>
 #include <vector>
 
+#include "Object.h"
+
 std::string header;
 std::string version;
 std::string title;
@@ -35,27 +37,43 @@ char** objectsMap;
 std::map<char, std::string> texturesNamesMap;
 std::map<char, Texture2D> textures2DMap;
 
-Vector2 playerPos;
+Vector2 playerInput;
+Vector2 playerGridPos;
+Vector2 playerWorldPos;
+
+Object* bomb;
 
 void DrawCubeTexture(Texture2D texture, Vector3 position, float width, float height, float length, Color color); // Draw cube textured
 void DrawCubeTextureRec(Texture2D texture, Rectangle source, Vector3 position, float width, float height, float length, Color color); // Draw cube with a region of a texture
 
+bool CanMove(int i, int j)
+{
+	if (i + int(playerInput.y) > lvlHeight ||
+		i + int(playerInput.y) < 0 ||
+		j + int(playerInput.x) > lvlWidth ||
+		j + int(playerInput.x) < 0)
+		return false;
+
+	if (collisionsMap[i + int(playerInput.y)][j + int(playerInput.x)] != '0') return false;
+	else return true;
+}
+
 int start_raylib(void)
 {
-    // Initialization
-    //--------------------------------------------------------------------------------------
-    const int screenWidth = 800;
-    const int screenHeight = 450;
+	// Initialization
+	//--------------------------------------------------------------------------------------
+	const int screenWidth = 800;
+	const int screenHeight = 450;
 
-    InitWindow(screenWidth, screenHeight, "raylib [models] example - cubicmap rendering");
+	InitWindow(screenWidth, screenHeight, "raylib [models] example - cubicmap rendering");
 
-    // Define the camera to look into our 3d world
-    Camera camera = { 0 };
-	camera.position = { 0.0f, 7.0f, 8.0f };     // Camera position
+	// Define the camera to look into our 3d world
+	Camera camera = { 0 };
+	camera.position = { 0.0f, 10.0f, 8.0f };     // Camera position
 	camera.target = { 0.0f, 0.0f, 0.0f };          // Camera looking at point
-    camera.up = { 0.0f, 1.0f, 0.0f };              // Camera up vector (rotation towards target)
-    camera.fovy = 45.0f;                                    // Camera field-of-view Y
-    camera.projection = CAMERA_PERSPECTIVE;               // Camera projection type
+	camera.up = { 0.0f, 1.0f, 0.0f };              // Camera up vector (rotation towards target)
+	camera.fovy = 45.0f;                                    // Camera field-of-view Y
+	camera.projection = CAMERA_PERSPECTIVE;               // Camera projection type
 
 	for (auto const& texturesMapIt : texturesNamesMap)
 	{
@@ -68,28 +86,28 @@ int start_raylib(void)
 		textures2DMap.insert({ texturesMapIt.first, tmpText });
 	}
 
-    //UnloadImage(image);     // Unload cubesmap image from RAM, already uploaded to VRAM
+	//UnloadImage(image);     // Unload cubesmap image from RAM, already uploaded to VRAM
 
-    bool pause = true;     // Pause camera orbital rotation (and zoom)
+	bool pause = true;     // Pause camera orbital rotation (and zoom)
 
-    SetTargetFPS(60);                   // Set our game to run at 60 frames-per-second
-    //--------------------------------------------------------------------------------------
+	SetTargetFPS(60);                   // Set our game to run at 60 frames-per-second
+	//--------------------------------------------------------------------------------------
 
-    // Main game loop
-    while (!WindowShouldClose())        // Detect window close button or ESC key
-    {
-        // Update
-        //----------------------------------------------------------------------------------
-        if (IsKeyPressed(KEY_P)) pause = !pause;
+	// Main game loop
+	while (!WindowShouldClose())        // Detect window close button or ESC key
+	{
+		// Update
+		//----------------------------------------------------------------------------------
+		if (IsKeyPressed(KEY_P)) pause = !pause;
 
-        if (!pause) UpdateCamera(&camera, CAMERA_FREE);
-        //----------------------------------------------------------------------------------
+		if (!pause) UpdateCamera(&camera, CAMERA_FREE);
+		//----------------------------------------------------------------------------------
 
-        // Draw
-        //----------------------------------------------------------------------------------
-        BeginDrawing();
+		// Draw
+		//----------------------------------------------------------------------------------
+		BeginDrawing();
 
-        ClearBackground(RAYWHITE);
+		ClearBackground(RAYWHITE);
 
 		BeginMode3D(camera);
 
@@ -128,11 +146,12 @@ int start_raylib(void)
 			}
 		}
 
+		Vector2 tmpPos = playerInput;
 
-		if (IsKeyPressed(KEY_D)) playerPos.x++;
-		if (IsKeyPressed(KEY_W)) playerPos.y--;
-		if (IsKeyPressed(KEY_A)) playerPos.x--;
-		if (IsKeyPressed(KEY_S)) playerPos.y++;
+		if (IsKeyPressed(KEY_D)) playerInput.x++;
+		if (IsKeyPressed(KEY_W)) playerInput.y--;
+		if (IsKeyPressed(KEY_A)) playerInput.x--;
+		if (IsKeyPressed(KEY_S)) playerInput.y++;
 
 		for (int i = 0; i < lvlHeight; i++)
 		{
@@ -140,11 +159,29 @@ int start_raylib(void)
 			{
 				if (objectsMap[i][j] != '0')
 				{
-					DrawSphere({ float(j) + offsetX + playerPos.x, 1.0f, float(i) + offsetZ + playerPos.y }, 0.25f, RED);
+					if (CanMove(i, j) == false) playerInput = tmpPos;
+					DrawSphere({ float(j) + offsetX + playerInput.x, 1.0f, float(i) + offsetZ + playerInput.y }, 0.25f, RED);
+
+					playerGridPos.x = (j + playerInput.x);
+					playerGridPos.y = (i + playerInput.y);
+					playerWorldPos.x = (j + offsetX + playerInput.x);
+					playerWorldPos.y = (i + offsetZ + playerInput.y);
 				}
 			}
 		}
 
+		if (IsKeyPressed(KEY_SPACE) && bomb == NULL) bomb = new Object(playerGridPos, playerWorldPos);
+		if (bomb != NULL)
+		{
+			bomb->PrintObject();
+			bomb->timer--;
+			if (bomb->timer <= 0)
+			{
+				bomb->DestroyDestructable(collisionsMap, mapMap);
+				delete bomb;
+				bomb = NULL;
+			}
+		}
 
 		//for (int i = 0; i < 1; i++)
 		//{
@@ -158,28 +195,28 @@ int start_raylib(void)
 
 		EndMode3D();
 
-        DrawFPS(10, 10);
+		DrawFPS(10, 10);
 
-        EndDrawing();
-        //----------------------------------------------------------------------------------
-    }
+		EndDrawing();
+		//----------------------------------------------------------------------------------
+	}
 
-    // De-Initialization
-    //--------------------------------------------------------------------------------------
-    //UnloadTexture(cubicmap);    // Unload cubicmap texture
-    //UnloadTexture(texture);     // Unload map texture
-    //UnloadModel(model);         // Unload map model
+	// De-Initialization
+	//--------------------------------------------------------------------------------------
+	//UnloadTexture(cubicmap);    // Unload cubicmap texture
+	//UnloadTexture(texture);     // Unload map texture
+	//UnloadModel(model);         // Unload map model
 
-    CloseWindow();              // Close window and OpenGL context
-    //--------------------------------------------------------------------------------------
+	CloseWindow();              // Close window and OpenGL context
+	//--------------------------------------------------------------------------------------
 
-    return 0;
+	return 0;
 }
 
 
 int main()
 {
-	std::ifstream inputFile("levels/level_1.bos");
+	std::ifstream inputFile("levels/level_2.bos");
 
 	if (!inputFile.is_open()) return 1;
 
